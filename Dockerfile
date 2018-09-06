@@ -1,4 +1,4 @@
-FROM wiremind/omnidb
+FROM wiremind/omnidb:2.10.0
 
 RUN  apt-get update \
   && apt-get install -y libaio1 unzip \
