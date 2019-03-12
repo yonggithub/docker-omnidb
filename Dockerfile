@@ -1,4 +1,4 @@
-FROM taivokasper/omnidb
+FROM wiremind/omnidb
 
 RUN  apt-get update \
   && apt-get install -y libaio1 unzip \
