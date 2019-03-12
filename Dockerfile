@@ -1,27 +1,38 @@
-FROM debian:stable-slim
+FROM alpine:3.8
 
-RUN  apt-get update \
-  && apt-get install -y wget \
-  && rm -rf /var/lib/apt/lists/*
+MAINTAINER Taivo Käsper <taivo.kasper@gmail.com>
 
-RUN mkdir /app
-WORKDIR /app
+ENV OMNIDB_VERSION 2.12.0
 
-RUN wget https://omnidb.org/dist/2.10.0/omnidb-server_2.10.0-debian-amd64.deb
+RUN apk add --no-cache --virtual .build-deps curl unzip g++ python3-dev \
+      && apk add --no-cache make wget llvm  \
+      && apk add --no-cache --update python3 \
+      && pip3 install --upgrade pip \
+      && apk add postgresql-dev libffi-dev \
+      && pip3 install psycopg2 \
+      && pip3 install cffi \
+      && curl -Lo /tmp/OmniDB.zip https://github.com/OmniDB/OmniDB/archive/${OMNIDB_VERSION}.zip
+RUN unzip /tmp/OmniDB.zip -d /opt/
+RUN rm -f /tmp/OmniDB.zip \
+      && mkdir /etc/omnidb
+RUN cd /opt/OmniDB-${OMNIDB_VERSION} \
+      && pip3 install --upgrade pip==9.0.3 \
+      && echo "Begin install cherrypy" \
+      && pip3 install cherrypy \
+      && echo "Begin install requirements" \
+      && pip3 install -r requirements.txt
 
-RUN dpkg -i /app/omnidb-server_2.10.0-debian-amd64.deb
+RUN apk del .build-deps \
+      && find /usr/local -name '*.a' -delete
 
-RUN  apt-get update \
-  && apt-get install -y libaio1 unzip \
-  && rm -rf /var/lib/apt/lists/*
-  
 ADD instantclient-basic-linux.x64-12.2.0.1.0.zip /app
 
 RUN unzip -q instantclient-basic-linux.x64-12.2.0.1.0.zip
  
 ENV LD_LIBRARY_PATH=/app/instantclient_12_2:$LD_LIBRARY_PATH
 
-EXPOSE 8000
-EXPOSE 25482
+EXPOSE 8080 25482
 
-CMD ["omnidb-server"]
+WORKDIR /opt/OmniDB-${OMNIDB_VERSION}/OmniDB
+
+ENTRYPOINT ["python3", "omnidb-server.py", "--host=0.0.0.0", "--port=8080", "-d", "/etc/omnidb"]
